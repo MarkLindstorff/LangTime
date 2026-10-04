@@ -1,6 +1,6 @@
 venv/
 .venv/
-lt-venv/
+lt-env/
 __pycache__/
 *.pyc
 .Dockerfile-data

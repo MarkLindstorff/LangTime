@@ -4,8 +4,9 @@
 # Brug: ./start.sh
 #
 # Sekvens:
-#   1. Tjek om alle dependencies er på plads
-#   2. Tjek/start LibreTranslate ( downloader modeller ved første kørsel —
+#   0. Tjek at systemafhængigheder (python3, pip, venv, curl) er på plads
+#   1. Opret .venv og lt-env hvis de mangler (med brugerens samtykke)
+#   2. Tjek/start LibreTranslate (downloader modeller ved første kørsel —
 #      progress vises direkte i terminalen)
 #   3. Initialiser databasen
 #   4. Start Flask-appen
@@ -19,7 +20,7 @@ LT_PID=""
 
 cd "$PROJECT_DIR"
 
-# ---------- FUNKTION: Check og ret dependencies ----------
+# ---------- Hjælpefunktioner ----------
 
 print_error() {
     echo "✗ FEJL: $1"
@@ -33,10 +34,26 @@ print_success() {
     echo "✓ $1"
 }
 
+cleanup() {
+    # Slår LibreTranslate ihjel, hvis VI startede den (og kun da)
+    if [ -n "$LT_PID" ] && kill -0 "$LT_PID" 2>/dev/null; then
+        echo ""
+        echo "Stopper LibreTranslate..."
+        kill "$LT_PID" 2>/dev/null
+    fi
+    echo "Farvel!"
+    exit 0
+}
+
+# Fang Ctrl+C så cleanup køres
+trap cleanup INT TERM
+
+# ---------- Trin 0a: System-afhængigheder ----------
+
 check_dependencies() {
     local errors_found=0
 
-    echo "▶ Tjekker dependencies..."
+    echo "▶ Tjekker system-afhængigheder..."
     echo ""
 
     # 1. Python3
@@ -54,7 +71,6 @@ check_dependencies() {
 
     # 2. Pip
     if ! command -v pip3 &> /dev/null; then
-        # Fallback: tjek om pip findes via python3 -m pip
         if ! python3 -m pip --version &> /dev/null; then
             print_error "pip er ikke installeret."
             echo "   Installer med: sudo apt install python3-pip"
@@ -67,7 +83,7 @@ check_dependencies() {
         print_success "pip3 fundet"
     fi
 
-    # 3. venv-support
+    # 3. venv-support — den eneste pålidelige test er at skabe et venv
     if [ -n "$(command -v python3)" ]; then
         VENV_TEST_DIR="$(mktemp -d)"
         if python3 -m venv "$VENV_TEST_DIR/probe" &> /dev/null; then
@@ -92,7 +108,7 @@ check_dependencies() {
         print_success "curl fundet"
     fi
 
-    # 5. xdg-open (til browser-åbning på Linux)
+    # 5. xdg-open (til browser-åbning) — kun en advarsel
     if ! command -v xdg-open &> /dev/null; then
         print_warning "xdg-open mangler (kan ikke åbne browser automatisk)."
         echo "   Installer med: sudo apt install xdg-utils"
@@ -101,69 +117,70 @@ check_dependencies() {
     fi
 
     echo ""
-
     return $errors_found
 }
 
-# 6. Tjek om .venv eksisterer
-check_venvs() {
-    local errors_found=0
+# ---------- Trin 0b: Virtuelle miljøer (oprettes automatisk hvis de mangler) ----------
+
+setup_venvs() {
+    local missing=0
 
     if [ ! -d ".venv" ]; then
-        print_error "Appens virtuelle miljø (.venv) mangler."
-        echo "   Opret det med:"
-        echo "   python3 -m venv .venv"
-        echo "   source .venv/bin/activate"
-        echo "   pip install -r requirements.txt"
-        echo ""
-        errors_found=1
-    else
-        print_success ".venv fundet"
+        echo "▶ Appens virtuelle miljø (.venv) findes ikke."
+        missing=1
     fi
 
     if [ ! -d "lt-env" ]; then
-        print_error "LibreTranslate-miljø (lt-env) mangler."
-        echo "   Opret det med:"
-        echo "   python3 -m venv lt-env"
-        echo "   source lt-env/bin/activate"
-        echo "   pip install libretranslate"
+        echo "▶ LibreTranslate-miljøet (lt-env) findes ikke."
+        missing=1
+    fi
+
+    if [ $missing -eq 0 ]; then
+        print_success ".venv og lt-env fundet"
         echo ""
-        errors_found=1
-    else
-        print_success "lt-env fundet"
+        return 0
     fi
 
     echo ""
-    return $errors_found
-}
+    read -rp "Vil du opbygge de manglende miljøer nu? [J/n] " answer
+    case "$answer" in
+        [nN]*)
+            echo "Okay — gør det manuelt med kommandoerne fra README'en og kør ./start.sh igen."
+            exit 1
+            ;;
+    esac
 
-# ---------- FUNKTION: Cleanup ----------
-
-cleanup() {
-    if [ -n "$LT_PID" ] && kill -0 "$LT_PID" 2>/dev/null; then
-        echo ""
-        echo "Stopper LibreTranslate..."
-        kill "$LT_PID" 2>/dev/null
+    if [ ! -d ".venv" ]; then
+        echo "▶ Opretter .venv og installerer app-afhængigheder..."
+        if ! python3 -m venv .venv; then
+            print_error "Kunne ikke oprette .venv"
+            exit 1
+        fi
+        if ! "$PROJECT_DIR/.venv/bin/pip" install -r requirements.txt; then
+            print_error "pip-install fejlede i .venv"
+            exit 1
+        fi
+        print_success ".venv er klar"
     fi
-    echo "Farvel!"
-    exit 0
+
+    if [ ! -d "lt-env" ]; then
+        echo "▶ Opretter lt-env og installerer LibreTranslate (tager flere minutter)..."
+        if ! python3 -m venv lt-env; then
+            print_error "Kunne ikke oprette lt-env"
+            exit 1
+        fi
+        if ! "$PROJECT_DIR/lt-env/bin/pip" install libretranslate; then
+            print_error "pip-install fejlede i lt-env"
+            exit 1
+        fi
+        print_success "lt-env er klar"
+    fi
+
+    echo ""
+    return 0
 }
 
-trap cleanup INT TERM
-
-# ---------- HAVNEFJORD: Kør checks ----------
-
-if ! check_dependencies; then
-    echo "❌ INSTALLATION IKKE KLAR. Installér de manglende dependencies og prøv igen."
-    exit 1
-fi
-
-if ! check_venvs; then
-    echo "❌ VIRTUAL ENVIRONMENTS IKKE KLAR. Opret dem og prøv igen."
-    exit 1
-fi
-
-# ---------- HJÆLPEFUNKTIONER ----------
+# ---------- Health-checks ----------
 
 lt_is_running() {
     curl -s --max-time 2 "http://127.0.0.1:$LT_PORT/languages" > /dev/null 2>&1
@@ -172,6 +189,15 @@ lt_is_running() {
 app_is_running() {
     curl -s --max-time 1 "http://127.0.0.1:$APP_PORT" > /dev/null 2>&1
 }
+
+# ==================== START HER ====================
+
+if ! check_dependencies; then
+    echo "❌ SYSTEM-AFHÆNGIGHEDER MANGLER. Installér dem og kør ./start.sh igen."
+    exit 1
+fi
+
+setup_venvs
 
 # ---------- 1. LibreTranslate ----------
 
@@ -183,6 +209,8 @@ else
     echo "   flere minutter. Progress vises herunder.)"
     echo ""
 
+    # Baggrundsproces — STDOUT arver terminalen, så download-
+    # progress vises løbende her.
     "$PROJECT_DIR/lt-env/bin/libretranslate" --port "$LT_PORT" &
     LT_PID=$!
 
@@ -209,22 +237,23 @@ echo "▶ Initialiserer databasen..."
 "$PROJECT_DIR/.venv/bin/python" -c "from db import init_db; init_db()"
 print_success "Databasen er klar"
 
-# ---------- 3. Browser ----------
+# ---------- 3. Browser (venter på appen, åbner når den er klar) ----------
 
 (
     ATTEMPTS=0
     until app_is_running; do
         ATTEMPTS=$((ATTEMPTS + 1))
-        [ $ATTEMPTS -ge 20 ] && exit 1
+        [ $ATTEMPTS -ge 20 ] && exit 1   # opgiv stille, hvis appen ikke starter
         sleep 1
     done
     xdg-open "http://127.0.0.1:$APP_PORT" > /dev/null 2>&1 &
 ) &
 
-# ---------- 4. Flask-appen ----------
+# ---------- 4. Flask-appen (forgrund — Ctrl+C stopper her) ----------
 
 echo "▶ Starter LangTime på http://127.0.0.1:$APP_PORT ..."
 echo ""
 "$PROJECT_DIR/.venv/bin/python" app.py
 
+# Når appen lukker (Ctrl+C), ryd op bag os
 cleanup

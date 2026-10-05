@@ -69,14 +69,17 @@ check_dependencies() {
 
     # 3. venv-support
     if [ -n "$(command -v python3)" ]; then
-        if ! python3 -m venv --version &> /dev/null; then
+        VENV_TEST_DIR="$(mktemp -d)"
+        if python3 -m venv "$VENV_TEST_DIR/probe" &> /dev/null; then
+            print_success "venv-understøttelse fundet"
+        else
             print_error "venv-module mangler (python3-venv)."
             echo "   Installer med: sudo apt install python3-venv"
+            echo "   (på Ubuntu 24.04 hedder den python3.12-venv)"
             echo ""
             errors_found=1
-        else
-            print_success "venv-understøttelse fundet"
         fi
+        rm -rf "$VENV_TEST_DIR"
     fi
 
     # 4. curl (til health-checks)

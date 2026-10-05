@@ -2,7 +2,7 @@ import os
 import string
 import requests
 from flask import Flask, render_template, request, jsonify, abort, redirect, url_for
-from translator import translate_word
+from translator import translate_word, translate_text
 from db import init_db, get_words_bulk, get_word, upsert_word, list_texts, get_text, add_text
 
 app = Flask(__name__)
@@ -94,6 +94,24 @@ def read_text(text_id):
 
 @app.route('/api/translate', methods=['POST'])
 def api_translate():
+    data = request.json or {}
+
+    # --- SÆTNINGSOVERSKÆTTELSE (først) ---
+    if data.get('phrase'):
+        phrase = (data.get('text') or '').strip()
+        if not phrase:
+            return jsonify({'error': 'Mangler tekst'}), 400
+        if len(phrase) > 500:
+            return jsonify({'error': 'Teksten er for lang (max 500 tegn)'}), 400
+        try:
+            translation = translate_text(phrase)
+            return jsonify({'text': phrase, 'translation': translation})
+        except requests.exceptions.ConnectionError:
+            return jsonify({'error': 'LibreTranslate kører ikke'}), 503
+        except requests.exceptions.Timeout:
+            return jsonify({'error': 'Oversættelse tog for lang tid'}), 504
+
+    # --- ORD-OVERSKÆTTELSE (som før) ---
     raw = request.json.get('word', '').strip()
     word = clean_word(raw)
     if not word:

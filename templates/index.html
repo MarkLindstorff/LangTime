@@ -8,6 +8,18 @@
 <body>
     <div class="container">
         <h1>Mit bibliotek</h1>
+
+        <!-- Upload-formular -->
+        <form class="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+            <input type="text" name="title" placeholder="Titel (valgfrit)">
+            <input type="file" name="file" accept=".txt" required>
+            <button type="submit">Tilføj tekst</button>
+        </form>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
         {% if texts %}
             <ul class="library">
                 {% for t in texts %}
@@ -17,8 +29,7 @@
                 {% endfor %}
             </ul>
         {% else %}
-            <p>Ingen tekster endnu. Importér én med:</p>
-            <pre>python import_text.py sti/til/fil.txt "Titel"</pre>
+            <p>Ingen tekster endnu — prøv formularen ovenfor!</p>
         {% endif %}
     </div>
 </body>

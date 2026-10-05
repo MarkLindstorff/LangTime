@@ -44,3 +44,36 @@ body {
 }
 
 .popup-buttons button.active { background: #eee; font-weight: bold; }
+
+.upload-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 1rem 0 2rem;
+    flex-wrap: wrap;
+}
+
+.upload-form input[type="text"] {
+    padding: 6px 10px;
+    border: 1px solid #999;
+    border-radius: 4px;
+}
+
+.upload-form button {
+    padding: 6px 14px;
+    cursor: pointer;
+    border: 1px solid #999;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.upload-form button:hover { background: #eee; }
+
+.error { color: #c62828; }
+
+.library {
+    list-style: none;
+    padding: 0;
+}
+
+.library li { margin: 0.5rem 0; }

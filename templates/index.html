@@ -2,15 +2,24 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>LangTime</title>
+    <title>LangTime — Mit bibliotek</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div class="container">
-        {% for w in words %}
-            <span class="word status-{{ w.status or 'unknown' }}">{{ w.raw }}</span>
-        {% endfor %}
+        <h1>Mit bibliotek</h1>
+        {% if texts %}
+            <ul class="library">
+                {% for t in texts %}
+                    <li>
+                        <a href="/read/{{ t.id }}">{{ t.title }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Ingen tekster endnu. Importér én med:</p>
+            <pre>python import_text.py sti/til/fil.txt "Titel"</pre>
+        {% endif %}
     </div>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

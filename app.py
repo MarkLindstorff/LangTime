@@ -1,18 +1,29 @@
 import string
 import requests
+from flask import Flask, render_template, request, jsonify, abort
 from translator import translate_word
-from flask import Flask, render_template, request, jsonify
-from db import init_db, get_words_bulk
-from db import get_word, upsert_word
+from db import init_db, get_words_bulk, get_word, upsert_word, list_texts, get_text
 
 app = Flask(__name__)
 
+PUNCTUATION = string.punctuation + "«»—…„“”'"
+
+def clean_word(raw: str) -> str:
+    """Fjerner tegnsætning og mellemrum fra et råt ord."""
+    return raw.strip(PUNCTUATION)
+
 @app.route('/')
 def home():
-    with open('texts/example.txt', 'r', encoding='utf-8') as f:
-        text = f.read()
+    texts = list_texts()
+    return render_template('index.html', texts=texts)
 
-    raw_words = text.split()
+@app.route('/read/<int:text_id>')
+def read_text(text_id):
+    text = get_text(text_id)
+    if text is None:
+        abort(404)
+
+    raw_words = text['content'].split()
     words = []
     for raw in raw_words:
         cleaned = clean_word(raw)
@@ -21,14 +32,12 @@ def home():
             'clean': cleaned,
         })
 
-    # Slå alle rene ord op i databasen på én gang
     statuses = get_words_bulk([w['clean'] for w in words])
 
-    # Giv hvert ord sin status, hvis det findes
     for w in words:
         w['status'] = statuses.get(w['clean'], None)
 
-    return render_template('index.html', words=words)
+    return render_template('reader.html', text=text, words=words)
 
 @app.route('/api/translate', methods=['POST'])
 def api_translate():
@@ -80,11 +89,6 @@ def api_stats():
             "SELECT status, COUNT(*) as n FROM words GROUP BY status"
         ).fetchall())
     return jsonify(counts)
-
-PUNCTUATION = string.punctuation + "«»—…„“”‘’"
-def clean_word(raw: str) -> str:
-    """Fjerner tegnsætning og mellemrum fra et råt ord."""
-    return raw.strip(PUNCTUATION)
 
 if __name__ == '__main__':
     init_db()

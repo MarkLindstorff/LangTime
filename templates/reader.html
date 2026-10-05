@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ text.title }} — LangTime</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <nav><a href="/">← Bibliotek</a></nav>
+        <h2>{{ text.title }}</h2>
+        {% for w in words %}
+            <span class="word status-{{ w.status or 'unknown' }}">{{ w.raw }}</span>
+        {% endfor %}
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

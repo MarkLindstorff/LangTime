@@ -6,3 +6,6 @@ __pycache__/
 .Dockerfile-data
 texts/
 langtime.db
+
+oldstyle.css
+oldmain.js

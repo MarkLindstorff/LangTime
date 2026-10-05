@@ -3,6 +3,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const readerText = document.querySelector('.reader-text');
     let selectionBtn = null;
 
+    // Hent mål-sprog-select elementet
+    const targetLangSelect = document.getElementById('target-lang');
+
+    // Gem mål-sprog-valget når brugeren skifter det
+    if (targetLangSelect) {
+        targetLangSelect.addEventListener('change', () => {
+            fetch('/api/settings/target-lang', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target_lang: targetLangSelect.value })
+            });
+        });
+    }
+
     function hideSelectionButton() {
         if (selectionBtn) {
             selectionBtn.remove();
@@ -37,27 +51,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function showSelectionButton(text, rect) {
+        // Fjern ALLE eksisterende popups før vi viser knappen
+        document.querySelectorAll('.popup').forEach(p => p.remove());
+
         hideSelectionButton();
 
         selectionBtn = document.createElement('button');
         selectionBtn.className = 'selection-btn';
         selectionBtn.textContent = 'Oversæt';
 
+        // VIGTIGT: gem teksten NU, og FIJN KNAPPEN før popup vises
         selectionBtn.onclick = (e) => {
-            e.stopPropagation();
-
-            // Ryd tekstmarkeringen, så systemet er i ren tilstand,
-            // og mouseup-listeneren ikke ser noget at genskabe
+            e.stopPropagation();  // forhindrer at klikket "percolates" videre
+            
+            // Ryd tekstmarkeringen, så systemet er i ren tilstand
             window.getSelection().removeAllRanges();
 
-            hideSelectionButton();
-            showPhrasePopup(text, rect);
+            hideSelectionButton(); // FJERNES UMIDDELTBAR
+            
+            // Vent et øjeblik så knappen er væk før popup vises
+            setTimeout(() => {
+                showPhrasePopup(text, rect);
+            }, 50);
         };
 
         document.body.appendChild(selectionBtn);
         selectionBtn.style.left = (rect.left + rect.width / 2) + 'px';
         selectionBtn.style.top = (rect.bottom + window.scrollY + 8) + 'px';
-        selectionBtn.style.zIndex = 1002;
+        selectionBtn.style.zIndex = 1002; // Knappen skal være OVER popup'eren
     }
 
     function showPhrasePopup(phrase, rect) {
@@ -67,7 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
         popup.className = 'popup';
         popup.textContent = 'Oversætter...';
         document.body.appendChild(popup);
-
+        
+        // Sørg for at popup ikke havder uden for viewport
         popup.style.left = Math.max(10, rect.left) + 'px';
         popup.style.top = (rect.bottom + window.scrollY + 8) + 'px';
         popup.style.zIndex = 1001;
@@ -75,7 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch('/api/translate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phrase: true, text: phrase })
+            body: JSON.stringify({ 
+                phrase: true, 
+                text: phrase, 
+                target: targetLangSelect ? targetLangSelect.value : undefined 
+            })
         })
         .then(res => res.json())
         .then(data => {
@@ -88,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
             popup.textContent = 'Netværksfejl';
         });
 
-        // Luk popup ved klik udenfor
+        // Luk popup når man klikker udenfor
         setTimeout(() => {
             document.addEventListener('click', function close(e) {
                 if (!popup.contains(e.target)) {
@@ -99,15 +125,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100);
     }
 
-    // --- ORD-OVERSKÆTTELSE (klik på ét ord) ---
+    // --- ORD-OVERSKÆTTELSE (klick på ét ord) ---
     document.querySelectorAll('.word').forEach(span => {
         span.addEventListener('click', async () => {
-            // Spring over hvis brugeren har lavet en tekstmarkering
+            // SPRING OVER hvis brugeren har lavet en tekstmarkering
             const sel = window.getSelection();
             if (sel && sel.toString().trim().length > 0) return;
 
             document.querySelectorAll('.popup').forEach(p => p.remove());
-            hideSelectionButton();
+            hideSelectionButton(); // Fjern også knappen hvis den er der
 
             const word = span.textContent;
             const popup = document.createElement('div');
@@ -125,7 +151,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch('/api/translate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ word })
+                    body: JSON.stringify({ 
+                        word, 
+                        target: targetLangSelect ? targetLangSelect.value : undefined 
+                    })
                 });
                 const data = await res.json();
                 if (data.error) {
@@ -160,7 +189,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 await fetch('/api/word', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ word, translation, status })
+                    body: JSON.stringify({ 
+                        word, 
+                        translation, 
+                        status,
+                        target: targetLangSelect ? targetLangSelect.value : undefined 
+                    })
                 });
                 span.className = 'word status-' + status;
                 popup.remove();

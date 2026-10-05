@@ -7,7 +7,16 @@
 </head>
 <body>
     <div class="container">
-        <nav class="reader-nav"><a href="/">← Bibliotek</a></nav>
+        <nav class="reader-nav">
+            <a href="/">← Bibliotek</a>
+            <select id="target-lang" class="target-lang-select">
+                {% for code, name in languages.items() %}
+                    <option value="{{ code }}" {% if code == target_lang %}selected{% endif %}>
+                        Oversæt til: {{ name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </nav>
         <h2>{{ text.title }}</h2>
         <div class="reader-text">
             {% for paragraph in paragraphs %}

@@ -12,19 +12,27 @@
         <!-- Upload-formular -->
         <form class="upload-form" action="/upload" method="post" enctype="multipart/form-data">
             <input type="text" name="title" placeholder="Titel (valgfrit)">
+            <select name="source_lang" required>
+                <option value="" disabled selected>Kilde-sprog…</option>
+                {% for code, name in languages.items() %}
+                    <option value="{{ code }}">{{ name }}</option>
+                {% endfor %}
+            </select>
             <input type="file" name="file" accept=".txt" required>
             <button type="submit">Tilføj tekst</button>
+            {% if error %}
+                <p class="error">{{ error }}</p>
+            {% endif %}
         </form>
-
-        {% if error %}
-            <p class="error">{{ error }}</p>
-        {% endif %}
 
         {% if texts %}
             <ul class="library">
                 {% for t in texts %}
                     <li>
-                        <a href="/read/{{ t.id }}">{{ t.title }}</a>
+                        <a href="/read/{{ t.id }}">
+                            {{ t.title }}
+                            <span class="lang-badge">{{ t.source_lang|upper }}</span>
+                        </a>
                     </li>
                 {% endfor %}
             </ul>

@@ -141,6 +141,28 @@ h2 {
     color: #6d4aff;
 }
 
+.lang-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: #eef0ff;
+    color: #6d4aff;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.target-lang-select {
+    float: right;
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    background: #f8fafc;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
 /* Læse-view */
 .reader-nav {
     margin-bottom: 1.5rem;

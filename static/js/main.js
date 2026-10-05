@@ -1,41 +1,75 @@
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.word').forEach(span => {
         span.addEventListener('click', async () => {
-            const word = span.textContent;
-
-            // Undgå spam ved dobbeltklik
-            if (span.dataset.loading) return;
-            span.dataset.loading = "1";
-
-            // Fjern evt. gammel popup
             document.querySelectorAll('.popup').forEach(p => p.remove());
 
+            const word = span.textContent;
             const popup = document.createElement('div');
             popup.className = 'popup';
             popup.textContent = 'Oversætter...';
             document.body.appendChild(popup);
 
-            // Placér popup lige under ordet
             const rect = span.getBoundingClientRect();
             popup.style.left = rect.left + 'px';
             popup.style.top = (rect.bottom + window.scrollY) + 'px';
 
+            let translation = '';
             try {
                 const res = await fetch('/api/translate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ word: word })
+                    body: JSON.stringify({ word })
                 });
                 const data = await res.json();
-                popup.textContent = data.translation || data.error;
+                if (data.error) {
+                    popup.textContent = data.error;
+                    setTimeout(() => popup.remove(), 3000);
+                    return;
+                }
+                translation = data.translation;
+                buildPopupContent(popup, span, word, translation, data.status);
             } catch (err) {
                 popup.textContent = 'Netværksfejl';
-            } finally {
-                span.dataset.loading = "";
+                setTimeout(() => popup.remove(), 2000);
             }
-
-            // Popup forsvinder efter 5 sekunder
-            setTimeout(() => popup.remove(), 5000);
         });
     });
+
+    function buildPopupContent(popup, span, word, translation, existingStatus) {
+        popup.textContent = '';
+
+        const title = document.createElement('strong');
+        title.textContent = `${word} → ${translation}`;
+        popup.appendChild(title);
+
+        const buttons = document.createElement('div');
+        buttons.className = 'popup-buttons';
+
+        [['new', 'Ny'], ['learning', 'Lærer'], ['known', 'Kender']].forEach(([status, label]) => {
+            const btn = document.createElement('button');
+            btn.textContent = label;
+            if (existingStatus === status) btn.classList.add('active');
+            btn.onclick = async () => {
+                await fetch('/api/word', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ word, translation, status })
+                });
+                span.className = 'word status-' + status;
+                popup.remove();
+            };
+            buttons.appendChild(btn);
+        });
+        popup.appendChild(buttons);
+
+        // Luk ved klik udenfor
+        setTimeout(() => {
+            document.addEventListener('click', function close(e) {
+                if (!popup.contains(e.target)) {
+                    popup.remove();
+                    document.removeEventListener('click', close);
+                }
+            });
+        }, 100);
+    }
 });

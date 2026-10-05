@@ -7,8 +7,8 @@
 </head>
 <body>
     <div class="container">
-        {% for word in words %}
-            <span class="word">{{ word }}</span>
+        {% for w in words %}
+            <span class="word status-{{ w.status or 'unknown' }}">{{ w.raw }}</span>
         {% endfor %}
     </div>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 .Dockerfile-data
 texts/
+langtime.db

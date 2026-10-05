@@ -16,6 +16,12 @@ body {
     background-color: #e0e0e0;
 }
 
+.status-new .popup-buttons button.active,
+.word.status-new        { color: #1565c0; border-bottom: 2px dotted #1565c0; }
+.word.status-learning   { color: #e65100; border-bottom: 2px solid #e65100; }
+.word.status-known      { color: #2e7d32; }
+.word.status-unknown    { /* almindelig tekst */ }
+
 .popup {
     position: absolute;
     background: white;
@@ -25,3 +31,16 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     z-index: 1000;
 }
+
+.popup-buttons { margin-top: 8px; display: flex; gap: 6px; }
+
+.popup-buttons button {
+    padding: 4px 10px;
+    font-size: 0.85em;
+    cursor: pointer;
+    border: 1px solid #999;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.popup-buttons button.active { background: #eee; font-weight: bold; }

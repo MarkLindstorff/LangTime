@@ -161,6 +161,12 @@ h2 {
     font-size: 1.1rem;
 }
 
+.reader-paragraph {
+    margin-bottom: 1.25rem;
+    text-indent: 0;
+    text-align: left;
+}
+
 /* Ord-interaktion */
 .word {
     cursor: pointer;

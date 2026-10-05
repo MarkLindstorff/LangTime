@@ -70,21 +70,27 @@ def read_text(text_id):
     if text is None:
         abort(404)
 
-    raw_words = text['content'].split()
-    words = []
-    for raw in raw_words:
-        cleaned = clean_word(raw)
-        words.append({
-            'raw': raw,
-            'clean': cleaned,
-        })
+    # Normaliser linjeskift (Windows-filer bruger \r\n) og del i afsnit
+    content = text['content'].replace('\r\n', '\n')
+    paragraphs_raw = [p for p in content.split('\n\n') if p.strip()]
 
-    statuses = get_words_bulk([w['clean'] for w in words])
+    paragraphs = []
+    for para_raw in paragraphs_raw:
+        words = []
+        for raw in para_raw.split():
+            words.append({'raw': raw, 'clean': clean_word(raw)})
+        if words:
+            paragraphs.append(words)
 
-    for w in words:
-        w['status'] = statuses.get(w['clean'], None)
+    # Slå alle ordene op i databasen på én gang
+    all_clean = [w['clean'] for para in paragraphs for w in para]
+    statuses = get_words_bulk(all_clean)
 
-    return render_template('reader.html', text=text, words=words)
+    for para in paragraphs:
+        for w in para:
+            w['status'] = statuses.get(w['clean'], None)
+
+    return render_template('reader.html', text=text, paragraphs=paragraphs)
 
 @app.route('/api/translate', methods=['POST'])
 def api_translate():

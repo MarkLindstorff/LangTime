@@ -7,11 +7,17 @@
 </head>
 <body>
     <div class="container">
-        <nav><a href="/">← Bibliotek</a></nav>
+        <nav class="reader-nav"><a href="/">← Bibliotek</a></nav>
         <h2>{{ text.title }}</h2>
-        {% for w in words %}
-            <span class="word status-{{ w.status or 'unknown' }}">{{ w.raw }}</span>
-        {% endfor %}
+        <div class="reader-text">
+            {% for paragraph in paragraphs %}
+                <p class="reader-paragraph">
+                    {% for w in paragraph %}
+                        <span class="word status-{{ w.status or 'unknown' }}">{{ w.raw }}</span>
+                    {% endfor %}
+                </p>
+            {% endfor %}
+        </div>
     </div>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

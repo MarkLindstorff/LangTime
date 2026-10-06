@@ -58,6 +58,17 @@ h2 {
     font-weight: 600;
 }
 
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+    margin-bottom: 0;
+}
+
 /* Tema-knap (dag/nat) */
 .theme-toggle {
     background: var(--surface);

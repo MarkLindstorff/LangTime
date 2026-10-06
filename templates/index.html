@@ -7,10 +7,12 @@
 </head>
 <body class="{{ 'dark-mode' if theme == 'dark' else '' }}">
     <div class="container">
-        <button id="theme-toggle" class="theme-toggle" title="Skift dag/nat">
-            <span class="sun">☀️</span><span class="moon">🌙</span>
-        </button>
-        <h1>Mit bibliotek</h1>
+        <div class="page-header">
+            <h1>Mit bibliotek</h1>
+            <button id="theme-toggle" class="theme-toggle" title="Skift dag/nat">
+                <span class="sun">☀️</span><span class="moon">🌙</span>
+            </button>
+        </div>
 
         <!-- Upload-formular -->
         <form class="upload-form" action="/upload" method="post" enctype="multipart/form-data">
@@ -43,5 +45,6 @@
             <p>Ingen tekster endnu — prøv formularen ovenfor!</p>
         {% endif %}
     </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

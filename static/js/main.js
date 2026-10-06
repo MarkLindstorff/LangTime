@@ -339,7 +339,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         target: targetLangSelect ? targetLangSelect.value : undefined 
                     })
                 });
-                span.className = 'word status-' + status;
+                // Opdater ALLE forekomster af ordet i teksten —
+                // status gælder ordet, ikke bare dette span
+                document.querySelectorAll('.word').forEach(wordSpan => {
+                    if (wordSpan.dataset.word === word) {
+                        wordSpan.className = 'word status-' + status;
+                    }
+                });
                 popup.remove();
             };
             buttons.appendChild(btn);

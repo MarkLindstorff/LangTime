@@ -22,7 +22,7 @@
             {% for paragraph in paragraphs %}
                 <p class="reader-paragraph">
                     {% for w in paragraph %}
-                        <span class="word status-{{ w.status or 'unknown' }}">{{ w.raw }}</span>
+                        <span class="word status-{{ w.status or 'unknown' }}" data-word="{{ w.clean }}">{{ w.raw }}</span>
                     {% endfor %}
                 </p>
             {% endfor %}

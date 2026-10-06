@@ -5,7 +5,7 @@
     <title>{{ text.title }} — LangTime</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
+<body class="{{ 'dark-mode' if theme == 'dark' else '' }}">
     <div class="container">
         <nav class="reader-nav">
             <a href="/">← Bibliotek</a>
@@ -16,6 +16,9 @@
                     </option>
                 {% endfor %}
             </select>
+            <button id="theme-toggle" class="theme-toggle" title="Skift dag/nat">
+                <span class="sun">☀️</span><span class="moon">🌙</span>
+            </button>
         </nav>
         <h2>{{ text.title }}</h2>
         <div class="reader-text">

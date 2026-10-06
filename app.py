@@ -17,6 +17,10 @@ LANGUAGES = {
     'uk': 'Ukrainsk', 'cs': 'Tjekkisk', 'pt': 'Portugisisk',
 }
 
+def get_theme():
+    """Henter det gemte tema ('light' som standard)."""
+    return get_setting('theme', 'light')
+
 def clean_word(raw: str) -> str:
     """Fjerner tegnsætning og mellemrum fra et råt ord."""
     return raw.strip(PUNCTUATION)
@@ -24,7 +28,7 @@ def clean_word(raw: str) -> str:
 @app.route('/')
 def home():
     texts = list_texts()
-    return render_template('index.html', texts=texts, languages=LANGUAGES)
+    return render_template('index.html', texts=texts, languages=LANGUAGES, theme=get_theme())
 
 @app.route('/upload', methods=['POST'])
 def upload_text():
@@ -36,6 +40,7 @@ def upload_text():
             'index.html',
             texts=list_texts(),
             languages=LANGUAGES,
+            theme=get_theme(),          # NYT: tema med ved fejl-rendering
             error='Du skal vælge en fil.'
         ), 400
 
@@ -44,6 +49,7 @@ def upload_text():
             'index.html',
             texts=list_texts(),
             languages=LANGUAGES,
+            theme=get_theme(),          # NYT
             error='Kun .txt-filer er understøttet indtil videre.'
         ), 400
 
@@ -54,6 +60,7 @@ def upload_text():
             'index.html',
             texts=list_texts(),
             languages=LANGUAGES,
+            theme=get_theme(),          # NYT
             error='Kunne ikke læse filen som UTF-8 tekst. Er det en almindelig tekstfil?'
         ), 400
 
@@ -62,6 +69,7 @@ def upload_text():
             'index.html',
             texts=list_texts(),
             languages=LANGUAGES,
+            theme=get_theme(),          # NYT
             error='Filen er tom.'
         ), 400
 
@@ -107,7 +115,8 @@ def read_text(text_id):
             w['status'] = statuses.get(w['clean'], None)
 
     return render_template('reader.html', text=text, paragraphs=paragraphs,
-                           languages=LANGUAGES, target_lang=target_lang)
+                           languages=LANGUAGES, target_lang=target_lang,
+                           theme=get_theme())        # NYT
 
 @app.route('/api/translate', methods=['POST'])
 def api_translate():
@@ -178,7 +187,17 @@ def api_set_target_lang():
     if lang not in LANGUAGES:
         return jsonify({'error': 'Ugyldigt sprog'}), 400
     set_setting('target_lang', lang)
-    return jsonify({'success': True, 'target_lang': lang})
+    return jsonify({'success': 'true' if False else True, 'target_lang': lang})
+
+@app.route('/api/settings/theme', methods=['POST'])      # NYT HELE ROUTEN
+def api_set_theme():
+    """Gem brugerens valg af lyst/mørkt tema."""
+    data = request.json or {}
+    theme = data.get('theme', '')
+    if theme not in ('light', 'dark'):
+        return jsonify({'error': 'Ugyldigt tema'}), 400
+    set_setting('theme', theme)
+    return jsonify({'success': True, 'theme': theme})
 
 @app.route('/api/stats')
 def api_stats():

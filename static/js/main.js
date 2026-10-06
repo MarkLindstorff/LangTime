@@ -19,6 +19,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Tema (dag/nat) ---
+    const themeToggle = document.getElementById('theme-toggle');
+
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            const body = document.body;
+            const isDark = body.classList.toggle('dark-mode');
+            const theme = isDark ? 'dark' : 'light';
+
+            // Gem valget, så det følger med på tværs af sider
+            fetch('/api/settings/theme', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ theme })
+            }).catch(() => {});  // temaet skifter lokalt uanset om gem fejler
+        });
+    }
+
     function hideSelectionButton() {
         if (selectionBtn) {
             selectionBtn.remove();
@@ -278,7 +296,9 @@ document.addEventListener('DOMContentLoaded', () => {
             hideSelectionButton(); // Fjern også knappen hvis den er der
             removeHighlight();     // Fjern også highlight hvis den er der
 
-            const word = span.textContent;
+            // Brug det RENSEDE ord (data-word) — det matcher serverens
+            // clean_word() og det ord vi sammenligner med ved status-gem
+            const word = span.dataset.word || span.textContent;
             const popup = document.createElement('div');
             popup.className = 'popup';
             popup.textContent = 'Oversætter...';

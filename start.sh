@@ -211,8 +211,7 @@ else
 
     # Baggrundsproces — STDOUT arver terminalen, så download-
     # progress vises løbende her.
-    # --load-only: hent KUN de sprog vi bruger (engelsk er "hub")
-    "$PROJECT_DIR/lt-env/bin/libretranslate" --port "$LT_PORT" --load-only ru,en,da &
+    "$PROJECT_DIR/lt-env/bin/libretranslate" --port "$LT_PORT" &
     LT_PID=$!
 
     printf "  Venter på at LibreTranslate bliver klar: "

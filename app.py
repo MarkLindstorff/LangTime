@@ -25,6 +25,30 @@ def clean_word(raw: str) -> str:
     """Fjerner tegnsætning og mellemrum fra et råt ord."""
     return raw.strip(PUNCTUATION)
 
+# PDF-support (hvis pypdf er installeret)
+try:
+    from pypdf import PdfReader
+    HAS_PYPDF = True
+except ImportError:
+    HAS_PYPDF = False
+
+def extract_pdf_text(path) -> str:
+    """Læser alle sider i PDF'en og samler teksten.
+    
+    Hver side afsluttes med blanklinje, så afsnits-opdelingen
+    (\\n\\n-splitting i read_text) får en chance.
+    """
+    reader = PdfReader(path)
+    pages = []
+    for page in reader.pages:
+        text = page.extract_text() or ''
+        text = text.strip()
+        if text:
+            pages.append(text)
+    if not pages:
+        raise ValueError('PDF\'en indeholder ingen udtrækkelig tekst.')
+    return '\n\n'.join(pages)
+
 @app.route('/')
 def home():
     texts = list_texts()
@@ -32,7 +56,7 @@ def home():
 
 @app.route('/upload', methods=['POST'])
 def upload_text():
-    """Modtager en .txt-fil og titel fra formularen, gemmer i databasen."""
+    """Modtager en .txt eller .pdf-fil og titel fra formularen, gemmer i databasen."""
     file = request.files.get('file')
 
     if file is None or file.filename == '':
@@ -40,28 +64,60 @@ def upload_text():
             'index.html',
             texts=list_texts(),
             languages=LANGUAGES,
-            theme=get_theme(),          # NYT: tema med ved fejl-rendering
+            theme=get_theme(),
             error='Du skal vælge en fil.'
         ), 400
 
-    if not file.filename.lower().endswith('.txt'):
+    filename_lower = file.filename.lower()
+    is_txt = filename_lower.endswith('.txt')
+    is_pdf = filename_lower.endswith('.pdf')
+    
+    if not (is_txt or is_pdf):
         return render_template(
             'index.html',
             texts=list_texts(),
             languages=LANGUAGES,
-            theme=get_theme(),          # NYT
-            error='Kun .txt-filer er understøttet indtil videre.'
+            theme=get_theme(),
+            error='Kun .txt og .pdf filer er understøttet.'
+        ), 400
+    
+    if is_pdf and not HAS_PYPDF:
+        return render_template(
+            'index.html',
+            texts=list_texts(),
+            languages=LANGUAGES,
+            theme=get_theme(),
+            error='PDF-understøttelse mangler. Installer med: pip install pypdf'
         ), 400
 
     try:
-        content = file.read().decode('utf-8')
+        if is_txt:
+            content = file.read().decode('utf-8')
+        else:  # PDF
+            content = extract_pdf_text(file)
     except UnicodeDecodeError:
         return render_template(
             'index.html',
             texts=list_texts(),
             languages=LANGUAGES,
-            theme=get_theme(),          # NYT
-            error='Kunne ikke læse filen som UTF-8 tekst. Er det en almindelig tekstfil?'
+            theme=get_theme(),
+            error='Kunne ikke læse filen som UTF-8. Er det en almindelig tekstfil?'
+        ), 400
+    except ValueError as e:
+        return render_template(
+            'index.html',
+            texts=list_texts(),
+            languages=LANGUAGES,
+            theme=get_theme(),
+            error=str(e)
+        ), 400
+    except Exception as e:
+        return render_template(
+            'index.html',
+            texts=list_texts(),
+            languages=LANGUAGES,
+            theme=get_theme(),
+            error=f'Læsning af fil fejlede: {e}'
         ), 400
 
     if not content.strip():
@@ -69,11 +125,11 @@ def upload_text():
             'index.html',
             texts=list_texts(),
             languages=LANGUAGES,
-            theme=get_theme(),          # NYT
+            theme=get_theme(),
             error='Filen er tom.'
         ), 400
 
-    # Titel: brug formularens titel, ellers filnavnet uden .txt
+    # Titel: brug formularens titel, ellers filnavnet uden .txt/.pdf
     title = request.form.get('title', '').strip()
     if not title:
         title = os.path.splitext(file.filename)[0]
@@ -94,9 +150,12 @@ def read_text(text_id):
 
     target_lang = get_setting('target_lang', 'da')
 
-    # Normaliser linjeskift (Windows-filer bruger \r\n) og del i afsnit
+    # Normaliser linjeskift (Windows-filer bruger \r\n) og del i linjer.
+    # Både enkelt- og dobbelt-linjeskift bliver til hvert sit afsnit —
+    # det bevarer struktur fra både .txt og PDF-udtræk (pypdf leverer
+    # én \n pr. linje og ingen blanklinjer mellem afsnit).
     content = text['content'].replace('\r\n', '\n')
-    paragraphs_raw = [p for p in content.split('\n\n') if p.strip()]
+    paragraphs_raw = [p for p in content.split('\n') if p.strip()]
 
     paragraphs = []
     for para_raw in paragraphs_raw:
@@ -116,7 +175,7 @@ def read_text(text_id):
 
     return render_template('reader.html', text=text, paragraphs=paragraphs,
                            languages=LANGUAGES, target_lang=target_lang,
-                           theme=get_theme())        # NYT
+                           theme=get_theme())
 
 @app.route('/api/translate', methods=['POST'])
 def api_translate():
@@ -187,9 +246,9 @@ def api_set_target_lang():
     if lang not in LANGUAGES:
         return jsonify({'error': 'Ugyldigt sprog'}), 400
     set_setting('target_lang', lang)
-    return jsonify({'success': 'true' if False else True, 'target_lang': lang})
+    return jsonify({'success': True, 'target_lang': lang})
 
-@app.route('/api/settings/theme', methods=['POST'])      # NYT HELE ROUTEN
+@app.route('/api/settings/theme', methods=['POST'])
 def api_set_theme():
     """Gem brugerens valg af lyst/mørkt tema."""
     data = request.json or {}

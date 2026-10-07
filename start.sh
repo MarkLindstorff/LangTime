@@ -71,8 +71,8 @@ check_dependencies() {
     # 2. Pip
     if ! command -v pip3 &> /dev/null; then
         if ! python3 -m pip --version &> /dev/null; then
-            print_error "pip er ikke installeret."
-            echo "   Installer pip via dit systems pakkehåndtering og kør igen."
+            print_error "python3-pip er ikke installeret."
+            echo "   Installer python3-pip via dit systems pakkehåndtering og kør igen."
             echo ""
             errors_found=1
         else
@@ -89,7 +89,7 @@ check_dependencies() {
             print_success "venv-understøttelse fundet"
         else
             print_error "venv-module mangler."
-            echo "   Installer pythons venv-pakke via dit systems"
+            echo "   Installer python3-venv via dit systems"
             echo "   pakkehåndtering og kør ./start.sh igen."
             echo ""
             errors_found=1

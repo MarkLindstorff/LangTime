@@ -6,8 +6,9 @@
 # Sekvens:
 #   0. Tjek at systemafhængigheder (python3, pip, venv, curl) er på plads
 #   1. Opret .venv og lt-env hvis de mangler (med brugerens samtykke)
-#   2. Tjek/start LibreTranslate (downloader modeller ved første kørsel —
-#      progress vises direkte i terminalen)
+#   1b. Vælg sprog ved første kørsel (gemmes i langtime.languages)
+#   2. Tjek/start LibreTranslate (downloader KUN modeller for de valgte
+#      sprog ved første kørsel — progress vises direkte i terminalen)
 #   3. Initialiser databasen
 #   4. Start Flask-appen
 #   5. Åbn browseren, når siden er klar
@@ -59,10 +60,8 @@ check_dependencies() {
     # 1. Python3
     if ! command -v python3 &> /dev/null; then
         print_error "Python3 er ikke installeret."
-        echo "   Installer med:"
-        echo "   Ubuntu/Debian: sudo apt install python3 python3-pip python3-venv"
-        echo "   macOS: brew install python3"
-        echo "   Fedora: sudo dnf install python3 python3-pip"
+        echo "   Installer Python 3 via dit systems pakkehåndtering"
+        echo "   (inkl. pip og venv-support) og kør ./start.sh igen."
         echo ""
         errors_found=1
     else
@@ -73,7 +72,7 @@ check_dependencies() {
     if ! command -v pip3 &> /dev/null; then
         if ! python3 -m pip --version &> /dev/null; then
             print_error "pip er ikke installeret."
-            echo "   Installer med: sudo apt install python3-pip"
+            echo "   Installer pip via dit systems pakkehåndtering og kør igen."
             echo ""
             errors_found=1
         else
@@ -89,9 +88,9 @@ check_dependencies() {
         if python3 -m venv "$VENV_TEST_DIR/probe" &> /dev/null; then
             print_success "venv-understøttelse fundet"
         else
-            print_error "venv-module mangler (python3-venv)."
-            echo "   Installer med: sudo apt install python3-venv"
-            echo "   (på Ubuntu 24.04 hedder den python3.12-venv)"
+            print_error "venv-module mangler."
+            echo "   Installer pythons venv-pakke via dit systems"
+            echo "   pakkehåndtering og kør ./start.sh igen."
             echo ""
             errors_found=1
         fi
@@ -101,7 +100,7 @@ check_dependencies() {
     # 4. curl (til health-checks)
     if ! command -v curl &> /dev/null; then
         print_error "curl er ikke installeret."
-        echo "   Installer med: sudo apt install curl"
+        echo "   Installer curl via dit systems pakkehåndtering og kør igen."
         echo ""
         errors_found=1
     else
@@ -111,8 +110,7 @@ check_dependencies() {
     # 5. xdg-open (til browser-åbning) — kun en advarsel
     if ! command -v xdg-open &> /dev/null; then
         print_warning "xdg-open mangler (kan ikke åbne browser automatisk)."
-        echo "   Installer med: sudo apt install xdg-utils"
-        echo "   Eller åbn browseren manuelt på http://127.0.0.1:$APP_PORT"
+        echo "   Åbn i stedet browseren manuelt på http://127.0.0.1:$APP_PORT"
         echo ""
     fi
 
@@ -180,6 +178,20 @@ setup_venvs() {
     return 0
 }
 
+# ---------- Trin 0c: Sprogvalg (hvilke modeller LibreTranslate skal loade) ----------
+
+setup_languages() {
+    local LANGS_FILE="$PROJECT_DIR/langtime.languages"
+
+    if [ ! -f "$LANGS_FILE" ]; then
+        echo "▶ Første kørsel: vælg hvilke sprog du vil bruge."
+        if ! "$PROJECT_DIR/setup_languages.sh"; then
+            print_error "Sprogvalg ikke fuldført."
+            exit 1
+        fi
+    fi
+}
+
 # ---------- Health-checks ----------
 
 lt_is_running() {
@@ -198,6 +210,9 @@ if ! check_dependencies; then
 fi
 
 setup_venvs
+setup_languages
+
+LT_LANGS="$(cat "$PROJECT_DIR/langtime.languages")"
 
 # ---------- 1. LibreTranslate ----------
 
@@ -211,7 +226,13 @@ else
 
     # Baggrundsproces — STDOUT arver terminalen, så download-
     # progress vises løbende her.
-    "$PROJECT_DIR/lt-env/bin/libretranslate" --port "$LT_PORT" &
+    if [ "$LT_LANGS" = "en" ]; then
+        # 'en' alene = brugeren valgte 'alle' → ingen restriktion
+        "$PROJECT_DIR/lt-env/bin/libretranslate" --port "$LT_PORT" &
+    else
+        echo "  Indlæser kun modeller for: $LT_LANGS"
+        "$PROJECT_DIR/lt-env/bin/libretranslate" --port "$LT_PORT" --load-only "$LT_LANGS" &
+    fi
     LT_PID=$!
 
     printf "  Venter på at LibreTranslate bliver klar: "
@@ -240,7 +261,11 @@ fi
 # ---------- 2. Databasen ----------
 
 echo "▶ Initialiserer databasen..."
-"$PROJECT_DIR/.venv/bin/python" -c "from db import init_db; init_db()"
+if ! "$PROJECT_DIR/.venv/bin/python" -c "from db import init_db; init_db()"; then
+    print_error "Kunne ikke initialisere databasen."
+    echo "  Kontrollér ledig diskplads og skriveadgang til projektmappen."
+    cleanup
+fi
 print_success "Databasen er klar"
 
 # ---------- 3. Browser (venter på appen, åbner når den er klar) ----------

@@ -206,26 +206,33 @@ if lt_is_running; then
 else
     echo "▶ Starter LibreTranslate..."
     echo "  (Første gang downloader den sprogmodeller — det kan tage"
-    echo "   flere minutter. Progress vises herunder.)"
+    echo "   længere tid. Progress vises herunder.)"
     echo ""
 
     # Baggrundsproces — STDOUT arver terminalen, så download-
     # progress vises løbende her.
-    "$PROJECT_DIR/lt-env/bin/libretranslate" --port "$LT_PORT" &
+    # --load-only: hent KUN de sprog vi bruger (engelsk er "hub")
+    "$PROJECT_DIR/lt-env/bin/libretranslate" --port "$LT_PORT" --load-only ru,en,da &
     LT_PID=$!
 
     printf "  Venter på at LibreTranslate bliver klar: "
     ATTEMPTS=0
+    TIMEOUT_MINUTES=60        # maks. ventetid i minutter
+    SECONDS_PER_TRY=2         # hvert forsøg tager ~2 sekunder
+    MAX_ATTEMPTS=$((TIMEOUT_MINUTES * 60 / SECONDS_PER_TRY))
+
     until lt_is_running; do
         ATTEMPTS=$((ATTEMPTS + 1))
-        if [ $ATTEMPTS -ge 120 ]; then
+        if [ $ATTEMPTS -ge $MAX_ATTEMPTS ]; then
             echo ""
-            print_error "LibreTranslate svarede ikke efter 120 sekunder."
-            echo "  Kig i outputtet ovenfor efter fejlbeskeder."
+            print_error "LibreTranslate svarede ikke efter $TIMEOUT_MINUTES minutter."
+            echo "  Hvis der lige er downloadet sprogmodeller ovenfor, er der måske"
+            echo "  sket en netværksafbrydelse — kør ./start.sh igen; download"
+            echo "  genoptages hvor den slap."
             cleanup
         fi
         printf "."
-        sleep 2
+        sleep $SECONDS_PER_TRY
     done
     echo ""
     print_success "LibreTranslate er klar (port $LT_PORT)"

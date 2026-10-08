@@ -6,7 +6,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="{{ 'dark-mode' if theme == 'dark' else '' }}">
-    <div class="container">
+    <!-- 'wide'-klassen sættes kun når teksten har kapitler -->
+    <div class="container {{ 'wide' if chapters }}">
         <nav class="reader-nav">
             <a href="/">← Bibliotek</a>
             <select id="target-lang" class="target-lang-select">
@@ -21,14 +22,35 @@
             </button>
         </nav>
         <h2>{{ text.title }}</h2>
-        <div class="reader-text">
-            {% for paragraph in paragraphs %}
-                <p class="reader-paragraph">
-                    {% for w in paragraph %}
-                        <span class="word status-{{ w.status or 'unknown' }}" data-word="{{ w.clean }}">{{ w.raw }}</span>
+
+        <div class="reader-layout">
+            {% if chapters %}
+                <aside class="chapter-menu">
+                    <strong>Kapitler</strong>
+                    <ol>
+                        {% for c in chapters %}
+                            <li>
+                                <a href="#chapter-{{ c.no }}">
+                                    {{ c.no }}. {{ c.title }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                </aside>
+            {% endif %}
+
+            <div class="reader-main">
+                <div class="reader-text">
+                    {% for p in paragraphs %}
+                        <p class="reader-paragraph {% if p.chapter %}reader-chapter-heading{% endif %}"
+                           {% if p.chapter %}id="chapter-{{ p.chapter }}"{% endif %}>
+                            {% for w in p.words %}
+                                <span class="word status-{{ w.status or 'unknown' }}" data-word="{{ w.clean }}">{{ w.raw }}</span>
+                            {% endfor %}
+                        </p>
                     {% endfor %}
-                </p>
-            {% endfor %}
+                </div>
+            </div>
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

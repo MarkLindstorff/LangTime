@@ -35,7 +35,8 @@ def extract_pdf_text(path: str) -> str:
             pages.append(text)
     if not pages:
         raise ValueError('PDF\'en indeholder ingen udtrækkelig tekst.')
-    return '\\n\\n'.join(pages)
+    # RETTET: enkelte backslashes — '\\n\\n' var bogstavelige tegn, ikke linjeskift
+    return '\n\n'.join(pages)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -65,8 +66,9 @@ def main():
         if args.file.lower().endswith('.pdf') else args.title
 
     text_id = add_text(title, content, args.lang)
+    # RETTET: også her — enkelte backslashes
     print(f'✓ Importeret: "{title}" ({args.lang}) → tekst #{text_id} '
-          f'({len(content)} tegn, {content.count("\\n\\n")+1} afsnit)')
+          f'({len(content)} tegn, {content.count("\n\n")+1} afsnit)')
 
 if __name__ == '__main__':
     main()

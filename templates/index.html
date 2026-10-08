@@ -23,7 +23,8 @@
                     <option value="{{ code }}">{{ name }}</option>
                 {% endfor %}
             </select>
-            <input type="file" name="file" accept=".txt" required>
+            <!-- RETTET: accepterer nu også PDF i filvælgeren -->
+            <input type="file" name="file" accept=".txt,.pdf" required>
             <button type="submit">Tilføj tekst</button>
             {% if error %}
                 <p class="error">{{ error }}</p>

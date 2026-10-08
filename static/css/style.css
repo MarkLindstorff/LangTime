@@ -17,7 +17,7 @@ body.dark-mode {
     --muted: #8891a5;
     --border: #333848;
     --accent: #8b6dff;
-    color-scheme: dark;   /* native select/scrollbars bliver mørke */
+    color-scheme: dark;
 }
 
 /* Reset og grund */
@@ -277,7 +277,7 @@ body.dark-mode .error {
 }
 
 .nav-right .target-lang-select {
-    float: none;   /* flex klarer positionen her */
+    float: none;
 }
 
 /* Bog-look for læsetekst */
@@ -306,13 +306,12 @@ body.dark-mode .error {
 
 /* Markering-overlays (når man er i gang med at vælge) */
 .selection-highlight {
-    position: absolute;
+    position: fixed;
     background: rgba(109, 74, 255, 0.2);
     border: 2px solid #6d4aff;
     border-radius: 4px;
     pointer-events: none;
     z-index: 999;
-    /* Glatter hvert "hop" mellem bogstaver ud */
     transition: left 0.08s ease-out, top 0.08s ease-out,
                 width 0.08s ease-out, height 0.08s ease-out;
     will-change: left, top, width, height;
@@ -323,14 +322,12 @@ body.dark-mode .selection-highlight {
     border-color: #8b6dff;
 }
 
-/* Boksen efter markering er færdig — lidt tydeligere */
 .selection-highlight.fixed {
     transition: none;
     background: rgba(109, 74, 255, 0.25);
     border-width: 3px;
 }
 
-/* Hvis markeringen er over et ord med status */
 .word.selected-word {
     background-color: rgba(109, 74, 255, 0.25) !important;
     box-shadow: inset 0 0 0 2px rgba(109, 74, 255, 0.3);
@@ -543,5 +540,112 @@ footer {
     .word {
         padding: 1px 4px;
         margin: 1px 0;
+    }
+}
+
+/* ===== Kapitelmenu ===== */
+.reader-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.chapter-menu {
+    position: sticky;
+    top: 70px;
+    width: 230px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 90px);
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.chapter-menu strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--heading);
+    font-size: 0.9rem;
+}
+
+.chapter-menu ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.chapter-menu a {
+    display: block;
+    padding: 5px 8px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.chapter-menu a:hover {
+    background: rgba(109, 74, 255, 0.12);
+    color: var(--accent);
+}
+
+.reader-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Selve kapiteloverskriften i teksten */
+.reader-chapter-heading {
+    font-weight: 700;
+    font-size: 1.2em;
+    text-align: center;
+    margin-top: 2.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--heading);
+    scroll-margin-top: 80px;
+}
+
+/* STORE SKÆRME (1200px+):
+   - Navigationen og tekst-boksen har samme bredde (900px container)
+   - Menuen låses fast til venstre side (udenfor containeren)
+   - Kun SELVE TEKSTEN inde i boksen får ekstra padding til venstre, så den ikke overlapper menuen */
+@media (min-width: 1200px) {
+    .container.wide {
+        max-width: 900px;
+        /* Centreret i området højre for menuen:
+           (skærm - menu - container) / 2 + menu bredde */
+        margin-left: calc((100vw - 266px - 900px) / 2 + 266px);
+        margin-right: auto;
+    }
+
+    .chapter-menu {
+        position: fixed;
+        left: 1rem;
+        top: 84px;
+        bottom: 1rem;
+        max-height: none;
+        overflow-y: auto;
+        z-index: 400;
+    }
+
+    .reader-layout {
+        gap: 0;
+    }
+}
+
+/* Smalle skærme (<1200px):
+   Menuen bliver oven over teksten som boks */
+@media (max-width: 1199px) {
+    .reader-layout {
+        flex-direction: column;
+    }
+
+    .chapter-menu {
+        position: static;
+        width: 100%;
+        max-height: 160px;
     }
 }

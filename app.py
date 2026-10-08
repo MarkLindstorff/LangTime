@@ -1,4 +1,5 @@
 import os
+import re
 import string
 import requests
 from flask import Flask, render_template, request, jsonify, abort, redirect, url_for
@@ -17,6 +18,15 @@ LANGUAGES = {
     'uk': 'Ukrainsk', 'cs': 'Tjekkisk', 'pt': 'Portugisisk',
 }
 
+# Kapiteloverskrifter: "Глава 5", "Chapter XII. The Journey", "Kapitel 3: Navn"
+# RETTET: tillader en valgfri titel efter nummeret (kolon/punktum/bindestreg + tekst)
+CHAPTER_RE = re.compile(
+    r'^(глава|часть|chapter|part|kapitel|afsnit)\s+(\d+|[ivxlcdm]+)\b\.?\s*[:.—-]?\s*.{0,60}$',
+    re.IGNORECASE
+)
+# Rene romertal alene ("IV") — kun hvis afsnittet er ganske kort
+ROMAN_RE = re.compile(r'^[ivxlcdm]{1,7}\.?$', re.IGNORECASE)
+
 def get_theme():
     """Henter det gemte tema ('light' som standard)."""
     return get_setting('theme', 'light')
@@ -34,9 +44,9 @@ except ImportError:
 
 def extract_pdf_text(path) -> str:
     """Læser alle sider i PDF'en og samler teksten.
-    
+
     Hver side afsluttes med blanklinje, så afsnits-opdelingen
-    (\\n\\n-splitting i read_text) får en chance.
+    (\n\n-splitting i read_text) får en chance.
     """
     reader = PdfReader(path)
     pages = []
@@ -71,7 +81,7 @@ def upload_text():
     filename_lower = file.filename.lower()
     is_txt = filename_lower.endswith('.txt')
     is_pdf = filename_lower.endswith('.pdf')
-    
+
     if not (is_txt or is_pdf):
         return render_template(
             'index.html',
@@ -80,7 +90,7 @@ def upload_text():
             theme=get_theme(),
             error='Kun .txt og .pdf filer er understøttet.'
         ), 400
-    
+
     if is_pdf and not HAS_PYPDF:
         return render_template(
             'index.html',
@@ -157,23 +167,36 @@ def read_text(text_id):
     content = text['content'].replace('\r\n', '\n')
     paragraphs_raw = [p for p in content.split('\n') if p.strip()]
 
-    paragraphs = []
+    paragraphs = []   # [{'words': [...], 'chapter': n eller None}, ...]
+    chapters = []     # [{'no': n, 'title': 'Глава 5'}, ...]
+
     for para_raw in paragraphs_raw:
-        words = []
-        for raw in para_raw.split():
-            words.append({'raw': raw, 'clean': clean_word(raw)})
-        if words:
-            paragraphs.append(words)
+        words = [{'raw': raw, 'clean': clean_word(raw)} for raw in para_raw.split()]
+        if not words:
+            continue
+
+        # Saml linjen til ren tekst og se om den ligner en kapiteloverskrift
+        plain = ' '.join(w['raw'] for w in words).strip(PUNCTUATION)
+        is_chapter = bool(CHAPTER_RE.match(plain)) or \
+                     (ROMAN_RE.match(plain) and len(words) <= 2)
+
+        if is_chapter:
+            ch_no = len(chapters) + 1
+            chapters.append({'no': ch_no, 'title': plain})
+            paragraphs.append({'words': words, 'chapter': ch_no})
+        else:
+            paragraphs.append({'words': words, 'chapter': None})
 
     # Slå alle ordene op i databasen på én gang (i det valgte målsprog)
-    all_clean = [w['clean'] for para in paragraphs for w in para]
+    all_clean = [w['clean'] for p in paragraphs for w in p['words']]
     statuses = get_words_bulk(all_clean, target_lang)
 
-    for para in paragraphs:
-        for w in para:
+    for p in paragraphs:
+        for w in p['words']:
             w['status'] = statuses.get(w['clean'], None)
 
     return render_template('reader.html', text=text, paragraphs=paragraphs,
+                           chapters=chapters,
                            languages=LANGUAGES, target_lang=target_lang,
                            theme=get_theme())
 
@@ -182,7 +205,7 @@ def api_translate():
     data = request.json or {}
     target = data.get('target', get_setting('target_lang', 'da'))
 
-    # --- SÆTNINGSOVERSKÆTTELSE (først) ---
+    # --- SÆTNINGSOVERSÆTTELSE (først) ---
     if data.get('phrase'):
         phrase = (data.get('text') or '').strip()
         if not phrase:
@@ -195,7 +218,7 @@ def api_translate():
         except requests.exceptions.ConnectionError:
             return jsonify({'error': 'LibreTranslate kører ikke'}), 503
         except requests.exceptions.Timeout:
-            return jsonify({'error': 'Oversættelse tog for lang tid'}), 504
+            return jsonify({'error': 'LibreTranslate tog for lang tid'}), 504
 
     # --- ORD-OVERSKÆTTELSE ---
     raw = data.get('word', '').strip()
@@ -219,7 +242,7 @@ def api_translate():
     except requests.exceptions.ConnectionError:
         return jsonify({'error': 'LibreTranslate kører ikke'}), 503
     except requests.exceptions.Timeout:
-        return jsonify({'error': 'Oversættelse tog for lang tid'}), 504
+        return jsonify({'error': 'LibreTranslate tog for lang tid'}), 504
 
 @app.route('/api/word', methods=['POST'])
 def api_save_word():
